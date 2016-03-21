@@ -2,8 +2,6 @@ require "spec_helper"
 require "support/api"
 require "support/array_type"
 
-require 'pry'
-
 describe "https://rxnav.nlm.nih.gov/REST/rxclass" do
   before :all do
     @url      = URI "https://rxnav.nlm.nih.gov/REST/rxclass/json"
@@ -22,16 +20,38 @@ describe RxNav::RxClass do
     response = Net::HTTP.get(URI("#{url}/json"))
     subject { JSON.parse(response)["resourceList"]["resource"] }
 
-    include_examples 'uses valid endpoints', [
-      "#{url}/allClasses?classTypes={classTypes}",
-      "#{url}/class/byRxcui?rxcui={rxcui}&relaSource={relaSource}&relas={relas}"
-    ]
+    include_examples 'uses valid endpoints', %W(
+      #{url}/allClasses?classTypes={classTypes}
+      #{url}/class/byRxcui?rxcui={rxcui}&relaSource={relaSource}&relas={relas}
+      #{url}/class/byDrugName?drugName={drugName}&relaSource={relaSource}&relas={relas}
+      #{url}/relaSources
+    )
   end
 
   describe "#all_classes" do
     subject { RxNav::RxClass.all_classes class_types: "MOA" }
 
     include_examples 'should be an array of', RxNav::RxClassMinConcept
+  end
+
+  describe "#by_drug_name" do
+    context "with no options" do
+      subject { RxNav::RxClass.by_drug_name "Ibuprofen" }
+      include_examples 'should be an array of', RxNav::RxClassMinConcept
+    end
+
+    context "with multiple results" do
+      subject { RxNav::RxClass.by_drug_name "Ibuprofen",
+                                            rela_source: "DAILYMED" }
+      include_examples 'should be an array of', RxNav::RxClassMinConcept
+    end
+
+    context "with single result" do
+      subject { RxNav::RxClass.by_drug_name "Ibuprofen",
+                                            rela_source: "DAILYMED",
+                                            relas: "has_EPC" }
+      it { is_expected.to be_a(RxNav::RxClassMinConcept) }
+    end
   end
 
   describe "#by_rxcui" do

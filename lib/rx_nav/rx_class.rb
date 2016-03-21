@@ -16,6 +16,31 @@ module RxNav
         concepts.map{ |c| RxClassMinConcept.new(c) }
       end
 
+      # Public: Get the classes containing a specifed drug name as a member
+      # Options:
+      #   rela_source -  a source of drug-class relationships. See #relaSources
+      #     for the list of sources of drug-class relations. If this field is
+      #     omitted, all sources of drug-class relationships will be used.
+      #   relas - a list of relationships of the drug to the class.
+      def by_drug_name name, options = {}
+        query = "/class/byDrugName?drugName=#{name}"
+
+        params = options.select{ |o| %w(rela_source relas).include? o.to_s }
+        query << params.map{ |k,v| "&#{camelize(k.to_s)}=#{v}"}.join("")
+        data = get_response_hash(query)
+
+        return nil if data.nil? ||
+                      data[:rxclass_drug_info_list].nil? ||
+                      data[:rxclass_drug_info_list][:rxclass_drug_info].nil?
+
+        c = data[:rxclass_drug_info_list][:rxclass_drug_info]
+        if c.is_a?(Hash) && !c[:rxclass_min_concept_item].nil?
+          return RxNav::RxClassMinConcept.new(c[:rxclass_min_concept_item])
+        end
+
+        c.map{ |concept| RxNav::RxClassMinConcept.new(concept) }
+      end
+
       # Public: Get the classes of a RxNorm drug identifier
       # Options:
       #   rela_source - a source of drug-class relationships. See #rela_sources
